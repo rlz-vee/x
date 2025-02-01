@@ -1,0 +1,455 @@
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local TitleBar = Instance.new("Frame")
+local MinimizeButton = Instance.new("TextButton")
+local CloseButton = Instance.new("TextButton")
+local ScrollFrame = Instance.new("ScrollingFrame")
+local ButtonTemplate = Instance.new("TextButton")
+
+-- GUI elementleri oluştur
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Name = "ModernGUI"
+
+-- Ana frame
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+Frame.Size = UDim2.new(0, 350, 0, 400)
+Frame.Position = UDim2.new(0.5, -175, 0.5, -200)
+Frame.Active = true
+Frame.Draggable = false
+Frame.BorderSizePixel = 0
+Frame.ClipsDescendants = true
+
+-- Başlık çubuğu
+TitleBar.Parent = Frame
+TitleBar.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.Position = UDim2.new(0, 0, 0, 0)
+TitleBar.BorderSizePixel = 0
+
+-- Başlık metni
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = TitleBar
+TitleLabel.Text = "şaklaban menu / ynscatty35 - dc oyoyaji"
+TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+
+-- Küçültme düğmesi
+MinimizeButton.Parent = TitleBar
+MinimizeButton.Size = UDim2.new(0, 40, 1, 0)
+MinimizeButton.Position = UDim2.new(1, -80, 0, 0)
+MinimizeButton.Text = "-"
+MinimizeButton.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4)
+MinimizeButton.TextColor3 = Color3.new(1, 1, 1)
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.TextSize = 35
+MinimizeButton.BorderSizePixel = 0
+
+-- Kapatma düğmesi
+CloseButton.Parent = TitleBar
+CloseButton.Size = UDim2.new(0, 40, 1, 0)
+CloseButton.Position = UDim2.new(1, -40, 0, 0)
+CloseButton.Text = "X"
+CloseButton.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+CloseButton.TextColor3 = Color3.new(1, 1, 1)
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.TextSize = 18
+CloseButton.BorderSizePixel = 0
+
+-- ScrollFrame (Kaydırılabilir alan)
+ScrollFrame.Parent = Frame
+ScrollFrame.Size = UDim2.new(1, 0, 1, -40)
+ScrollFrame.Position = UDim2.new(0, 0, 0, 40)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.ScrollBarThickness = 5
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+
+-- Buton şablonu
+ButtonTemplate.Name = "ButtonTemplate"
+ButtonTemplate.Size = UDim2.new(0.9, 0, 0, 48)
+ButtonTemplate.Position = UDim2.new(0.05, 0, 0, 10)
+ButtonTemplate.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+ButtonTemplate.TextColor3 = Color3.new(1, 1, 1)
+ButtonTemplate.Font = Enum.Font.SourceSansBold
+ButtonTemplate.TextSize = 16
+ButtonTemplate.BorderSizePixel = 0
+ButtonTemplate.Visible = false
+
+-- Bowling Kontrol Sistemi
+local ballController = {
+    Enabled = false,
+    Connections = {},
+    Original = {}
+}
+
+function ballController:Activate()
+    if self.Enabled then return end
+    self.Enabled = true
+    
+    local Player = game.Players.LocalPlayer
+    local character = Player.Character or Player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    self.Original.Humanoid = {
+        PlatformStand = humanoid.PlatformStand,
+        CameraSubject = workspace.CurrentCamera.CameraSubject
+    }
+    
+    self.Original.Parts = {}
+    for _, v in ipairs(character:GetDescendants()) do
+        if v:IsA("BasePart") then
+            self.Original.Parts[v] = {CanCollide = v.CanCollide}
+            v.CanCollide = false
+        end
+    end
+    
+    rootPart.Shape = Enum.PartType.Ball
+    rootPart.Size = Vector3.new(5, 5, 5)
+    rootPart.CanCollide = true
+    humanoid.PlatformStand = true
+    workspace.CurrentCamera.CameraSubject = rootPart
+    
+    local renderConnection
+    renderConnection = game:GetService("RunService").RenderStepped:Connect(function(delta)
+        if not self.Enabled then return end
+        rootPart.CanCollide = true
+        
+        if game:GetService("UserInputService"):GetFocusedTextBox() then return end
+        local camRight = workspace.CurrentCamera.CFrame.RightVector
+        local camLook = workspace.CurrentCamera.CFrame.LookVector
+        
+        if game:GetService("UserInputService"):IsKeyDown("W") then
+            rootPart.RotVelocity -= camRight * delta * 30
+        end
+        if game:GetService("UserInputService"):IsKeyDown("A") then
+            rootPart.RotVelocity -= camLook * delta * 30
+        end
+        if game:GetService("UserInputService"):IsKeyDown("S") then
+            rootPart.RotVelocity += camRight * delta * 30
+        end
+        if game:GetService("UserInputService"):IsKeyDown("D") then
+            rootPart.RotVelocity += camLook * delta * 30
+        end
+    end)
+    
+    local jumpConnection
+    jumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+        if not self.Enabled then return end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = {character}
+        
+        local result = workspace:Raycast(
+            rootPart.Position,
+            Vector3.new(0, -((rootPart.Size.Y/2)+0.3), 0),
+            params
+        )
+        
+        if result then
+            rootPart.Velocity += Vector3.new(0, 60, 0)
+        end
+    end)
+    
+    local deathConnection
+    deathConnection = humanoid.Died:Connect(function()
+        self:Deactivate()
+    end)
+    
+    table.insert(self.Connections, renderConnection)
+    table.insert(self.Connections, jumpConnection)
+    table.insert(self.Connections, deathConnection)
+end
+
+function ballController:Deactivate()
+    if not self.Enabled then return end
+    self.Enabled = false
+    
+    for _, connection in pairs(self.Connections) do
+        connection:Disconnect()
+    end
+    self.Connections = {}
+    
+    local Player = game.Players.LocalPlayer
+    local character = Player.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        
+        if rootPart then
+            rootPart.Shape = Enum.PartType.Block
+            rootPart.Size = Vector3.new(2, 2, 1)
+            rootPart.CanCollide = false
+        end
+        
+        if humanoid then
+            humanoid.PlatformStand = self.Original.Humanoid.PlatformStand
+        end
+        
+        for part, properties in pairs(self.Original.Parts) do
+            if part:IsA("BasePart") then
+                part.CanCollide = properties.CanCollide
+            end
+        end
+    end
+    
+    workspace.CurrentCamera.CameraSubject = self.Original.Humanoid.CameraSubject or Player.Character.Humanoid
+    self.Original = {}
+end
+
+-- Butonları oluştur
+local buttons = {
+    {Text = "31 ÇEKME", Function = function() loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))() end},
+    {Text = "ALL EMOTE", Function = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/AFEM/refs/heads/main/AFEM.lua"))() end},
+    {Text = "TAKLACI KUŞ - F/G/C TUSLARI", Function = function() 
+        local ver = "2.00"
+local scriptname = "feFlip"
+
+local FrontflipKey = Enum.KeyCode.F
+local BackflipKey = Enum.KeyCode.G
+local AirjumpKey = Enum.KeyCode.C
+
+
+--[[ Dependencies ]]--
+
+local ca = game:GetService("ContextActionService")
+local zeezy = game:GetService("Players").LocalPlayer
+local h = 0.0174533
+local antigrav
+
+
+--[[ Functions ]]--
+
+function zeezyFrontflip(act,inp,obj)
+	if inp == Enum.UserInputState.Begin then
+		zeezy.Character.Humanoid:ChangeState("Jumping")
+		wait()
+		zeezy.Character.Humanoid.Sit = true
+		for i = 1,360 do 
+			delay(i/720,function()
+			zeezy.Character.Humanoid.Sit = true
+				zeezy.Character.HumanoidRootPart.CFrame = zeezy.Character.HumanoidRootPart.CFrame * CFrame.Angles(-h,0,0)
+			end)
+		end
+		wait(0.55)
+		zeezy.Character.Humanoid.Sit = false
+	end
+end
+
+function zeezyBackflip(act,inp,obj)
+	if inp == Enum.UserInputState.Begin then
+		zeezy.Character.Humanoid:ChangeState("Jumping")
+		wait()
+		zeezy.Character.Humanoid.Sit = true
+		for i = 1,360 do
+			delay(i/720,function()
+			zeezy.Character.Humanoid.Sit = true
+				zeezy.Character.HumanoidRootPart.CFrame = zeezy.Character.HumanoidRootPart.CFrame * CFrame.Angles(h,0,0)
+			end)
+		end
+		wait(0.55)
+		zeezy.Character.Humanoid.Sit = false
+	end
+end
+
+function zeezyAirjump(act,inp,obj)
+	if inp == Enum.UserInputState.Begin then
+		zeezy.Character:FindFirstChildOfClass'Humanoid':ChangeState("Seated")
+		wait()
+		zeezy.Character:FindFirstChildOfClass'Humanoid':ChangeState("Jumping")	
+	end
+end
+
+
+--[[ Binds ]]--
+
+ca:BindAction("zeezyFrontflip",zeezyFrontflip,false,FrontflipKey)
+ca:BindAction("zeezyBackflip",zeezyBackflip,false,BackflipKey)
+ca:BindAction("zeezyAirjump",zeezyAirjump,false,AirjumpKey)
+
+--[[ Load Message ]]--
+
+local notifSound = Instance.new("Sound",workspace)
+notifSound.PlaybackSpeed = 1.5
+notifSound.Volume = 0.15
+notifSound.SoundId = "rbxassetid://170765130"
+notifSound.PlayOnRemove = true
+notifSound:Destroy()
+game.StarterGui:SetCore("SendNotification", {Title = "TAKLACI KUS", Text = "TAKLACI KUS yuklendi!", Duration = 2, Button1 = "Okay"})
+    end},
+    {Text = "ZAMANI GERİ SARMA - Q TUSU", Function = function() 
+        local key = "R" --key to intiate the flashback.
+local flashbacklength = 60 --how long the flashback should be stored in approx seconds
+local flashbackspeed = 0 --how many frames to skip during flashback (set to 0 to disable)
+
+local name = game:GetService("RbxAnalyticsService"):GetSessionId() --unique id that games cannot access but does not change on subsequent executions (used for the name of the binded function)
+local frames,uis,LP,RS = {},game:GetService("UserInputService"),game:GetService("Players").LocalPlayer,game:GetService("RunService") --set some vars
+
+pcall(RS.UnbindFromRenderStep,RS,name) --unbind the function if previously binded
+
+local function getchar()
+   return LP.Character or LP.CharacterAdded:Wait()
+end
+
+function gethrp(c) --gethrp ripped from my env script and stripped of arguments
+return c:FindFirstChild("HumanoidRootPart") or c.RootPart or c.PrimaryPart or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso") or c:FindFirstChildWhichIsA("BasePart")
+end
+
+local flashback = {lastinput=false,canrevert=true}
+
+function flashback:Advance(char,hrp,hum,allowinput)
+   
+   if #frames>flashbacklength*60 then --make sure we don't have too much history
+       table.remove(frames,1)
+   end
+   
+   if allowinput and not self.canrevert then
+       self.canrevert = true
+   end
+   
+   if self.lastinput then --make sure platformstand goes back to normal
+       hum.PlatformStand = false
+       self.lastinput = false
+   end
+   
+   table.insert(frames,{
+       hrp.CFrame,
+       hrp.Velocity,
+       hum:GetState(),
+       hum.PlatformStand,
+       char:FindFirstChildOfClass("Tool")
+   })
+end
+
+function flashback:Revert(char,hrp,hum)
+   local num = #frames
+   if num==0 or not self.canrevert then --add to history and return if no history is present
+       self.canrevert = false
+       self:Advance(char,hrp,hum)
+       return
+   end
+   for i=1,flashbackspeed do --skip frames (if enabled)
+       table.remove(frames,num)
+       num=num-1
+   end
+   self.lastinput = true
+   local lastframe = frames[num]
+   table.remove(frames,num)
+   hrp.CFrame = lastframe[1]
+   hrp.Velocity = -lastframe[2]
+   hum:ChangeState(lastframe[3])
+   hum.PlatformStand = lastframe[4] --platformstand to make flying look normal again
+   local currenttool = char:FindFirstChildOfClass("Tool")
+   if lastframe[5] then --equip/unequip tools
+       if not currenttool then
+           hum:EquipTool(lastframe[5])
+       end
+   else
+       hum:UnequipTools()
+   end
+end
+
+local function step() --function that runs every frame
+   local char = getchar()
+   local hrp = gethrp(char)
+   local hum = char:FindFirstChildWhichIsA("Humanoid")
+   if uis:IsKeyDown(Enum.KeyCode[key]) then --begin flashback
+       flashback:Revert(char,hrp,hum)
+   else
+       flashback:Advance(char,hrp,hum,true)
+   end
+end
+RS:BindToRenderStep(name,1,step)
+    end},
+    {
+        Text = "BOWLING TOPU", 
+        Function = function(button)
+            if not ballController.Enabled then
+                ballController:Activate()
+                button.BackgroundColor3 = Color3.new(0.3, 0.7, 0.3)
+            else
+                ballController:Deactivate()
+                button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+            end
+        end
+    },
+    {Text = "DUVARDA YÜRÜME (oyunu bozuyo az) Z TUSU", Function = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/sinret/rbxscript.com-scripts-reuploads-/main/WalkOnWalls", true))() end},
+}
+
+local buttonSpacing = 10
+local totalHeight = 0
+
+for i, buttonInfo in ipairs(buttons) do
+    local newButton = ButtonTemplate:Clone()
+    newButton.Parent = ScrollFrame
+    newButton.Text = buttonInfo.Text
+    newButton.Position = UDim2.new(0.05, 0, 0, totalHeight + buttonSpacing)
+    newButton.Visible = true
+
+    if buttonInfo.Text == "BOWLING TOPU" then
+        newButton.MouseButton1Click:Connect(function()
+            buttonInfo.Function(newButton)
+        end)
+    else
+        newButton.MouseButton1Click:Connect(buttonInfo.Function)
+    end
+
+    totalHeight = totalHeight + newButton.Size.Y.Offset + buttonSpacing
+end
+
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + buttonSpacing)
+
+-- Sürükleme fonksiyonelliği
+local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragStart
+local startPos
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if dragging then
+            local delta = input.Position - dragStart
+            Frame.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
+        end
+    end
+end)
+
+-- Küçültme fonksiyonelliği
+local isMinimized = false
+local originalSize = Frame.Size
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        Frame.Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, 40)
+        ScrollFrame.Visible = false
+    else
+        Frame.Size = originalSize
+        ScrollFrame.Visible = true
+    end
+end)
+
+-- Kapatma fonksiyonelliği
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
